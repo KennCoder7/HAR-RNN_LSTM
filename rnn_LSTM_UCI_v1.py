@@ -67,13 +67,13 @@ def lstm_rnn(_x):
     )
     print("# fully connected shape: ", lstm_last_output.shape)  # fully connected shape:  (?, 32)
 
-    softmax = tf.layers.dense(
+    prediction = tf.layers.dense(
         inputs=lstm_last_output,
         units=n_classes,
         activation=tf.nn.softmax
     )
-    print("# softmax shape: ", softmax.shape)  # softmax shape:  (?, 6)
-    return softmax
+    print("# prediction shape: ", prediction.shape)  # prediction shape:  (?, 6)
+    return prediction
 
 
 def extract_batch_size(_train, step, batch_size):
