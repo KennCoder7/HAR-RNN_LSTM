@@ -23,6 +23,8 @@ n_classes = 6
 learning_rate = 0.0025
 training_steps = 10000  # Loop 10000 times
 batch_size = 1500
+shuffle_index = np.arange(test_data_count)
+np.random.shuffle(shuffle_index)
 
 
 def lstm_rnn(_x):
@@ -72,9 +74,8 @@ def lstm_rnn(_x):
     return prediction
 
 
-def extract_batch_size(_train, step, batch_size):
+def extract_batch_size(_train, step, batch_size=batch_size):
     # Function to fetch a "batch_size" amount of data from "(X|y)_train" data.
-
     shape = list(_train.shape)
     shape[0] = batch_size
     batch_s = np.empty(shape)
@@ -82,6 +83,18 @@ def extract_batch_size(_train, step, batch_size):
     for i in range(batch_size):
         # Loop index
         index = ((step - 1) * batch_size + i) % len(_train)
+        batch_s[i] = _train[index]
+
+    return batch_s
+
+
+def extract_batch_size_4test(_train, step, batch_size=batch_size, shuffle_index=shuffle_index):
+    shape = list(_train.shape)
+    shape[0] = batch_size
+    batch_s = np.empty(shape)
+
+    for i in range(batch_size):
+        index = shuffle_index[((step - 1) * batch_size + i) % len(_train)]
         batch_s[i] = _train[index]
 
     return batch_s
@@ -101,8 +114,8 @@ accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 with tf.Session() as sess:
     tf.global_variables_initializer().run()
     for step in range(training_steps):
-        batch_xs = extract_batch_size(train_x, step, batch_size)
-        batch_ys = extract_batch_size(train_y, step, batch_size)
+        batch_xs = extract_batch_size(train_x, step)
+        batch_ys = extract_batch_size(train_y, step)
         # Fit training using batch data
         _, loss_train, acc_train = sess.run([optimizer, loss, accuracy],
                                             feed_dict={x: batch_xs, y: batch_ys})
@@ -110,9 +123,13 @@ with tf.Session() as sess:
             print("# Step", (step+1), "| Train loss:", loss_train,
                   "| Train accuracy:", acc_train)
         if (step+1) % 200 == 0:
-            batch__test_xs = extract_batch_size(test_x, step, batch_size)
-            batch__test_ys = extract_batch_size(test_y, step, batch_size)
+            batch_test_xs = extract_batch_size_4test(test_x, step)
+            batch_test_ys = extract_batch_size_4test(test_y, step)
             loss_test, acc_test = sess.run([loss, accuracy],
-                                           feed_dict={x: batch__test_xs, y: batch__test_ys})
+                                           feed_dict={x: batch_test_xs, y: batch_test_ys})
             print("# Step", (step+1), "| Test loss:", loss_test,
                   "| Test accuracy:", acc_test)
+
+# Step 4150 | Train loss: 0.028905101 | Train accuracy: 0.932
+# Step 4200 | Train loss: 0.009770757 | Train accuracy: 0.9813333
+# Step 4200 | Test loss: 0.09749943 | Test accuracy: 0.91333336
