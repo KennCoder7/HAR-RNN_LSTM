@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+# from tensorflow.contrib import rnn
 
 train_x = np.load('data/processed/np_train_x.npy')
 train_y = np.load("data/processed/np_train_y_one_hot.npy")
@@ -21,24 +22,18 @@ n_classes = 6
 
 learning_rate = 0.0025
 training_steps = 10000  # Loop 10000 times
-batch_size = 1000
+batch_size = 1500
 
 
 def lstm_rnn(_x):
     _x = tf.transpose(_x, [1, 0, 2])  # (128, ?, 9)
     print("# transpose shape: ", _x.shape)    # transpose shape:  (128, ?, 9)
-    _x = tf.reshape(_x, [-1, n_input])  # (n_step*batch_size, n_input)
-    print("# reshape shape: ", _x.shape)    # reshape shape:  (?, 9)
     _x = tf.layers.dense(
         inputs=_x,
         units=n_hidden,
         activation=tf.nn.relu,
     )
-    print("# relu shape: ", _x.shape)     # relu shape:  (?, 32)
-    _x = tf.split(_x, n_steps, 0)  # n_steps * (batch_size, n_hidden)
-    # spilt makes _x.type from array --> list for static_rnn()
-    print("# list shape: ", np.array(_x).shape)    # list shape:  (128,)
-    print("# list unit shape: ", np.array(_x)[0].shape)    # list unit shape:  (?, 32)
+    print("# relu shape: ", _x.shape)     # relu shape:  (128, ?, 32)
 
     lstm_cell_1 = tf.nn.rnn_cell.LSTMCell(num_units=n_hidden, forget_bias=1.0, state_is_tuple=True)
     lstm_cell_1_drop = tf.nn.rnn_cell.DropoutWrapper(cell=lstm_cell_1, output_keep_prob=0.5)
@@ -52,10 +47,12 @@ def lstm_rnn(_x):
     print("# multi cells shape: ", lstm_cells.state_size)
     # multi cells shape:  (LSTMStateTuple(c=32, h=32), LSTMStateTuple(c=32, h=32))
 
-    outputs, states = tf.nn.static_rnn(cell=lstm_cells, inputs=_x, dtype=tf.float32)
-    print("# outputs & states shape: ", np.array(outputs).shape, np.array(states).shape)
-    # outputs & states shape:  (128,) (2, 2)
-
+    initial_state = lstm_cells.zero_state(batch_size=batch_size, dtype=tf.float32)
+    outputs, states = tf.nn.dynamic_rnn(cell=lstm_cells, inputs=_x, initial_state=initial_state,
+                                        dtype=tf.float32, time_major=True)
+    print("# outputs & states shape: ", outputs.shape, np.array(states).shape)
+    # outputs & states shape:  (128, batch_size=1000, 32) (2, 2)
+    # tf.nn.dynamic_rnn
     lstm_last_output = outputs[-1]  # N to 1
     print("# last output shape: ", lstm_last_output.shape)  # last output shape:  (?, 32)
 
@@ -113,13 +110,9 @@ with tf.Session() as sess:
             print("# Step", (step+1), "| Train loss:", loss_train,
                   "| Train accuracy:", acc_train)
         if (step+1) % 200 == 0:
+            batch__test_xs = extract_batch_size(test_x, step, batch_size)
+            batch__test_ys = extract_batch_size(test_y, step, batch_size)
             loss_test, acc_test = sess.run([loss, accuracy],
-                                           feed_dict={x: test_x, y: test_y})
+                                           feed_dict={x: batch__test_xs, y: batch__test_ys})
             print("# Step", (step+1), "| Test loss:", loss_test,
                   "| Test accuracy:", acc_test)
-
-# 2018/11/7 with fc
-# Step 5600 | Train loss: 0.012740456 | Train accuracy: 0.984
-# Step 5600 | Test loss: 0.06892706 | Test accuracy: 0.9165253
-# Step 5800 | Train loss: 0.01251974 | Train accuracy: 0.98
-# Step 5800 | Test loss: 0.052563805 | Test accuracy: 0.92365116
