@@ -23,6 +23,8 @@ n_classes = 6
 learning_rate = 0.0025
 training_steps = 10000  # Loop 10000 times
 batch_size = 1000
+train_shuffle_index = np.arange(train_data_count)
+np.random.shuffle(train_shuffle_index)
 
 
 def lstm_rnn(_x, batch_size=batch_size, n_hidden=n_hidden):
@@ -72,7 +74,7 @@ def lstm_rnn(_x, batch_size=batch_size, n_hidden=n_hidden):
     return prediction
 
 
-def extract_batch_size(_train, step, batch_size=batch_size):
+def extract_batch_size(_train, step, batch_size=batch_size, train_shuffle_index=train_shuffle_index):
     # Function to fetch a "batch_size" amount of data from "(X|y)_train" data.
     shape = list(_train.shape)
     shape[0] = batch_size
@@ -80,7 +82,7 @@ def extract_batch_size(_train, step, batch_size=batch_size):
 
     for i in range(batch_size):
         # Loop index
-        index = ((step - 1) * batch_size + i) % len(_train)
+        index = train_shuffle_index[((step - 1) * batch_size + i) % len(_train)]
         batch_s[i] = _train[index]
 
     return batch_s
@@ -114,7 +116,6 @@ with tf.Session() as sess:
                   "| Test accuracy:", acc_test)
 
 
-# Step 4400 | Train loss: 0.015600987 | Train accuracy: 0.962
-# Step 4400 | Test loss: 0.09354443 | Test accuracy: 0.9046488
-# Step 4600 | Train loss: 0.028455302 | Train accuracy: 0.918
-# Step 4600 | Test loss: 0.07753036 | Test accuracy: 0.9093994
+# shuffle后train acc上升过程更稳定，不易出现掉幅很大的现象， test acc稳步上升
+# Step 4000 | Train loss: 0.0138888545 | Train accuracy: 0.967
+# Step 4000 | Test loss: 0.1128672 | Test accuracy: 0.8975229
